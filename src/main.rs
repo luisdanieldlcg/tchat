@@ -1,7 +1,7 @@
 pub mod args;
-use args::{ClientArgs, NetchatArgs};
+use args::{ClientArgs, NetchatArgs, ServerArgs};
 use clap::Parser;
-use socket2::{Domain, Socket, Type};
+use socket2::{Domain, Socket, Type, Protocol};
 use std::{
     io::Write,
     net::{SocketAddr, TcpListener, TcpStream},
@@ -18,19 +18,25 @@ struct Netchat {
 }
 
 impl Netchat {
-    pub async fn new(args: NetchatArgs) -> Self {
-        let socket = Self::bind("127.0.0.1:0");
+    
+    pub async fn start(args: NetchatArgs) {
+        
+        let addr = match &args.mode {
+            Mode::Connect(_) => "127.0.0.1:0".to_string(),
+            Mode::Serve(args) => format!("{}:{}", args.addr, args.port),
+        };
+       
+        let socket = Self::bind(&addr);
         println!("Running Netchat CLI App in {}", args.mode.as_str());
+
         let this = Self {
             username: args.username,
         };
 
         match args.mode {
             Mode::Connect(args) => this.run_client(args, socket).await,
-            Mode::Serve(_args) => this.run_server(socket).await,
+            Mode::Serve(args) => this.run_server(args, socket).await,
         };
-
-        this
     }
 
     pub fn bind(ipv4_addr: &str) -> Socket {
@@ -38,11 +44,14 @@ impl Netchat {
             .parse::<SocketAddr>()
             .unwrap_or_else(|_| panic!("{} is not a valid IPV4 address", ipv4_addr));
 
-        let socket = match Socket::new(Domain::IPV4, Type::STREAM, None) {
+        let socket = match Socket::new(Domain::IPV4, Type::STREAM, Some(Protocol::TCP)) {
             Ok(t) => t,
             Err(e) => panic!("Couldn't bind socket: {}", e),
         };
-        socket.bind(&addr.into()).expect("Failed to bind socket");
+
+        if let Err(e) =  socket.bind(&addr.into()) {
+            panic!("Failed to bind socket: {} at {}", e, addr);
+        }
         socket
     }
 
@@ -101,7 +110,7 @@ impl Netchat {
         }
     }
 
-    pub async fn run_server(&self, socket: Socket) {
+    pub async fn run_server(&self, args: ServerArgs, socket: Socket) {
         socket.listen(128).unwrap();
         let addr = socket.local_addr().unwrap().as_socket().unwrap();
         println!("Server listening at: {}", addr);
@@ -142,5 +151,5 @@ impl Netchat {
 #[tokio::main]
 async fn main() {
     let args = NetchatArgs::parse();
-    let chat = Netchat::new(args).await;
+    Netchat::start(args).await;
 }

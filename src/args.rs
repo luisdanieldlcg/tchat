@@ -33,12 +33,19 @@ impl Mode {
 }
 
 #[derive(Debug, Args)]
-pub struct ServerArgs {}
+pub struct ServerArgs {
+    /// The port of the target server
+    #[clap(short, default_value_t = 0)]
+    pub port: u16,
+    /// The IP address of the target server, defaults to localhost
+    #[clap(short, default_value = "127.0.0.1")]
+    pub addr: String,
+}
 
 #[derive(Debug, Args)]
 pub struct ClientArgs {
     /// The port of the target server
-    #[clap(short)]
+    #[clap(short, default_value_t = 0)]
     pub port: u16,
     /// The IP address of the target server, defaults to localhost
     #[clap(short, default_value = "127.0.0.1")]
