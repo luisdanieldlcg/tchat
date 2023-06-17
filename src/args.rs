@@ -9,6 +9,10 @@ pub struct NetchatArgs {
 
     /// The username that will be displayed to other clients
     pub username: String,
+    
+    /// Whether the internet protocol should be UDP or TCP
+    #[clap(short, default_value_t = false)]
+    pub udp: bool,
 }
 
 #[derive(Debug, Subcommand)]
