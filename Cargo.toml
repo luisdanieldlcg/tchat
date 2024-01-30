@@ -1,5 +1,5 @@
 [package]
-name = "netchat-cli"
+name = "tchat"
 version = "0.1.0"
 edition = "2021"
 

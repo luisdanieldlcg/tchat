@@ -228,15 +228,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "netchat-cli"
-version = "0.1.0"
-dependencies = [
- "clap",
- "socket2 0.5.3",
- "tokio",
-]
-
-[[package]]
 name = "num_cpus"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -378,6 +369,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "tchat"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "socket2 0.5.3",
+ "tokio",
 ]
 
 [[package]]

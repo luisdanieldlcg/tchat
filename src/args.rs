@@ -2,17 +2,13 @@ use clap::{Args, Parser, Subcommand};
 
 #[derive(Parser, Debug)]
 #[command(author = "Daniking")]
-pub struct NetchatArgs {
+pub struct TChatArgs {
     /// Wether to run in server or client mode
     #[clap(subcommand)]
     pub mode: Mode,
 
     /// The username that will be displayed to other clients
     pub username: String,
-    
-    /// Whether the internet protocol should be UDP or TCP
-    #[clap(short, default_value_t = false)]
-    pub udp: bool,
 }
 
 #[derive(Debug, Subcommand)]

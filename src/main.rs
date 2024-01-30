@@ -1,25 +1,30 @@
 pub mod args;
-use args::{ClientArgs, NetchatArgs, ServerArgs};
+use args::{ClientArgs, TChatArgs};
 use clap::Parser;
 use socket2::{Domain, Protocol, Socket, Type};
-use std::net::{SocketAddr, TcpListener, TcpStream, UdpSocket};
+use std::net::{SocketAddr, TcpListener, TcpStream};
 use tokio::{
-    io::{AsyncBufReadExt, AsyncWriteExt, AsyncReadExt},
-    net::tcp::OwnedWriteHalf, select,
+    io::{AsyncBufReadExt, AsyncWriteExt},
+    net::tcp::OwnedWriteHalf,
 };
 
 use crate::args::Mode;
 
+#[tokio::main]
+async fn main() {
+    let args = TChatArgs::parse();
+    TChat::start(args).await;
+}
+
 struct Config {
     username: String,
-    udp: bool,
     socket: Socket,
 }
 
-struct Netchat;
+struct TChat;
 
-impl Netchat {
-    pub async fn start(args: NetchatArgs) {
+impl TChat {
+    pub async fn start(args: TChatArgs) {
         let addr = match &args.mode {
             Mode::Connect(_) => "127.0.0.1:0".to_string(),
             Mode::Serve(args) => format!("{}:{}", args.addr, args.port),
@@ -27,11 +32,11 @@ impl Netchat {
 
         let config = Config {
             username: args.username,
-            udp: args.udp,
             socket: Self::bind(&addr),
         };
 
-        println!("Running Netchat CLI App in {}", args.mode.as_str());
+        println!("Running TChat CLI App in {}", args.mode.as_str());
+        println!("Connected as {}", config.username);
 
         match args.mode {
             Mode::Connect(args) => Self::run_client(config, args).await,
@@ -54,11 +59,9 @@ impl Netchat {
         socket
     }
 
-    
-
     pub async fn run_client(config: Config, args: ClientArgs) {
         println!(
-            "Netchat socket bound to: {}",
+            "TChat socket bound to: {}",
             config.socket.local_addr().unwrap().as_socket().unwrap()
         );
         let tgt_addr = format!("{}:{}", args.addr, args.port)
@@ -72,47 +75,19 @@ impl Netchat {
 
         println!("Connection established at {}", tgt_addr);
 
-        if config.udp {
-            Self::handle_connect_udp(config).await;
-        } else {
-            Self::handle_connect_tcp(config).await;
-        }
+        Self::handle_connect_tcp(config).await;
     }
 
     pub async fn run_server(config: Config) {
         config.socket.listen(128).unwrap();
         let addr = config.socket.local_addr().unwrap().as_socket().unwrap();
         println!("Server listening at: {}", addr);
-
-        if config.udp {
-            Self::handle_serve_udp(config).await;
-        } else {
-            Self::handle_serve_tcp(config).await;
-        }
-        
-    }
-
-    pub async fn handle_serve_udp(config: Config) {
-        let udp: UdpSocket = config.socket.into();
-        let socket = tokio::net::UdpSocket::from_std(udp).unwrap();
-
-        let mut input_buf = [0; 265];
-        let mut recv_buf = [0; 256];
-        let mut input = tokio::io::stdin();
-        loop {
-            select! {
-                res = input.read(&mut input_buf) => {
-                   
-                },
-                res = socket.recv(&mut recv_buf) => {
-                  
-                }
-            }
-        }
+        Self::handle_serve_tcp(config).await;
     }
 
     pub async fn handle_serve_tcp(config: Config) {
         let tcp: TcpListener = config.socket.into();
+
         for req in tcp.incoming() {
             match req {
                 Ok(stream) => {
@@ -144,36 +119,7 @@ impl Netchat {
         }
     }
 
-    pub async fn handle_connect_udp(config: Config) {
-        let udp: UdpSocket = config.socket.into();
-        let socket = tokio::net::UdpSocket::from_std(udp).unwrap();
-
-        let mut input_buf = [0; 265];
-        let mut recv_buf = [0; 256];
-        let mut input = tokio::io::stdin();
-        loop {
-            select! {
-                res = input.read(&mut input_buf) => {
-                    if let Ok(n) = res {
-                        socket.send(&input_buf[0..n]).await.unwrap();
-                    } else {
-                        res.unwrap();
-                    }
-                },
-                res = socket.recv(&mut recv_buf) => {
-                    if let Ok(n) = res {
-                        tokio::io::stdout().write(&recv_buf[0..n]).await.unwrap();
-                    } else {
-                        res.unwrap();
-                    }
-                }
-            }
-        }
-
-    }
-
     pub async fn handle_connect_tcp(config: Config) {
-
         let tcp: TcpStream = config.socket.into();
         let stream = tokio::net::TcpStream::from_std(tcp).expect("Failed to connect to server");
 
@@ -214,10 +160,5 @@ impl Netchat {
             buffer.clear();
         }
     }
-}
 
-#[tokio::main]
-async fn main() {
-    let args = NetchatArgs::parse();
-    Netchat::start(args).await;
 }
